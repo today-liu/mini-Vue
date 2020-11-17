@@ -1,0 +1,22 @@
+{
+  "name": "mini-vue",
+  "version": "1.0.0",
+  "description": "自己写的mini版Vue",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/today-liu/mini-Vue.git"
+  },
+  "keywords": [
+    "miin-Vue"
+  ],
+  "author": "today-liu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/today-liu/mini-Vue/issues"
+  },
+  "homepage": "https://github.com/today-liu/mini-Vue#readme"
+}
