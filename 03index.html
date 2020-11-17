@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多层级路径访问变量</title>
+    <title>插值多层级路径访问变量</title>
 </head>
+
 <body>
     <div id="root">
-        <h3>{{name.firstName}}--{{name.lastName}}</h3>
+        <h3>{{people.name.firstName}}--{{people.name.lastName}}</h3>
         <h4>{{age}}</h4>
         <div>
             <div>
                 <div>
-                    <h3>{{name}}--{{age}}</h3>
+                    <h3>{{people.name.firstName}}{{people.name.lastName}}--{{age}}</h3>
                 </div>
             </div>
         </div>
@@ -22,27 +24,89 @@
         //数据驱动  多层级路径访问变量
         // 抽取Vue构造函数
         function Vue(options) {
-            this._el = options.el;
-            this._data = options.data;
+            this._el = options.el;   //取到data内的值
+            this._data = options.data;  //取到data内的值
+
+            //准备工作   拿到模板   
+            this._template = document.querySelector(this._el);  //获取模板
+            this._parent = this._template.parentNode;
+
+            //将新的DOM渲染在页面
+            this.render()
         }
-        
+
+        Vue.prototype.render = function () {
+            //将模板与数据结合
+            this.compire()
+        }
+
+        Vue.prototype.compire = function () {
+            //将模板与数据结合
+            let realCloneDOM = this._template.cloneNode(true);  //模板拷贝得到一份DOM
+            compire(realCloneDOM, this._data);
+            this.update(realCloneDOM);
+        }
+        Vue.prototype.update = function (realDOM) {
+            this._parent.replaceChild(realDOM, this._template)
+        }
+
+        function compire(template, data) {
+            let childNodes = template.childNodes;  //获取模板DOM下的所有子节点元素
+            let splint = /\{\{(.+?)\}\}/g;
+            // 判断每个子节点元素的类型是否为文本类型
+            for (let i = 0; i < childNodes.length; i++) {
+                let type = childNodes[i].nodeType;
+                if (type === 3) {
+                    //为文本节点
+                    //拿到文本节点的值,
+                    let txt = childNodes[i].nodeValue;
+                    // console.log(txt)
+                    //正则匹配取到对应的插值表达式
+                    txt = txt.replace(splint, function (_, v) {
+                        let path = v.trim();
+                        // console.log(key)
+                        let value = getValueByPath(data, path)
+                        console.log(value)
+                        return value
+                    })
+                    childNodes[i].nodeValue = txt;  //得到data内的值替换插值表达式
+                } else if (type === 1) {
+                    //为元素节点,  继续遍历元素
+                    compire(childNodes[i], data)
+                }
+            }
+        }
+
+        //多层级路径，找到插值表达式对应的值
+        function getValueByPath(obj, path) {
+            let paths = path.split(".")
+            let res = obj;
+            let key;
+            while (key = paths.shift()) {
+                res = res[key]
+                // console.log(res)
+            }
+            return res
+        }
 
 
 
 
 
 
-
-        let app = Vue({
+        let app = new Vue({
             el: "#root",
             data: {
-                name: {
-                    firstName: '张',
-                    lastName: '三丰'
+                people: {
+                    name: {
+                        firstName: '张',
+                        lastName: '三丰'
+                    },
                 },
                 age: 20
             }
         })
     </script>
 </body>
+
 </html>
