@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多层级路径访问变量</title>
+</head>
+<body>
+    <div id="root">
+        <h3>{{name.firstName}}--{{name.lastName}}</h3>
+        <h4>{{age}}</h4>
+        <div>
+            <div>
+                <div>
+                    <h3>{{name}}--{{age}}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        //数据驱动  多层级路径访问变量
+        // 抽取Vue构造函数
+        function Vue(options) {
+            this._el = options.el;
+            this._data = options.data;
+        }
+        
+
+
+
+
+
+
+
+        let app = Vue({
+            el: "#root",
+            data: {
+                name: {
+                    firstName: '张',
+                    lastName: '三丰'
+                },
+                age: 20
+            }
+        })
+    </script>
+</body>
+</html>
