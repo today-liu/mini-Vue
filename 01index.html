@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据驱动</title>
+</head>
+
+<body>
+    <div id="root">
+        <h3>{{name}}</h3>
+        <h4>{{age}}</h4>
+        <div>
+            <div>
+                <div>
+                    <h3>{{name}}--{{age}}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        //数据驱动
+        //步骤拆解
+        // 1、拿到模板
+        // 2、拿到数据
+        // 3、将数据与模板结合，得到HTML元素
+        // 4、渲染到页面
+
+        // 1、拿到页面中的模板
+        let temNode = document.querySelector("#root");  //拿到  id  为 root  的元素下面所有的元素
+        let cloneNode = temNode.cloneNode(true);
+        // 2、拿到数据
+        let data = {
+            name: '李四',
+            age: 20
+        }
+        let splint = /\{\{(.+?)\}\}/g
+
+        // 3、将数据与模板结合，得到HTML元素（DOM元素）
+        function compiler(template, data) {
+            //拿到模板中的每一个子节点
+            let childNode = template.childNodes
+            // console.log(childNode)
+            
+            //使用递归，判断节点类型是否是文本类型
+            for(let i = 0; i < childNode.length; i++) {
+                let type = childNode[i].nodeType;  //获取元素节点类型（1  元素节点，  3   文本节点）
+                // console.log(childNode[i])
+                if(type === 3) {
+                    //获取文本节点内的值
+                    let txt = childNode[i].nodeValue
+
+                    // 判断文本节点的值内是否有  {{}}  插值
+                    txt = txt.replace(splint, function(_, v) {   //通过正则取到双花括号内的值
+                        let key = v.trim();  //这里就是取到的双花括号内的值
+                        let value = data[key]  //需要替换的值
+                        return value
+                    })
+                    childNode[i].nodeValue = txt
+                    
+                } else if(type === 1) {
+                    //元素节点，继续遍历节点，直到为元素节点为止
+                    compiler(childNode[i], data)
+                }
+            }
+        }
+        console.log(temNode)
+        compiler(cloneNode, data)
+        console.log(cloneNode)
+        root.parentNode.replaceChild(cloneNode, root)
+    </script>
+</body>
+
+</html>
