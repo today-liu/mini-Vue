@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>虚拟DOM</title>
+    <title>真实DOM转化为虚拟DOM</title>
 </head>
+
 <body>
     <div id="root">
         <div>hello1</div>
@@ -17,10 +19,48 @@
         </ul>
     </div>
     <script>
-        //生成虚拟DOM
-        
+        class VNode {
+            constructor(tag, data, value, type) {
+                this.tag = tag && tag.toLowerCase();
+                this.data = data;
+                this.value = value;
+                this.type = type;
+                this.children = [];
+            }
+            appendChild(vnode) {
+                this.children.push(vnode)
+            }
+        }
 
+        function getVNode(node) {
+            let nodeType = node.nodeType;  //节点类型
+            let _vnode = null;
+            if (nodeType === 1) {
+                //元素节点
+                let nodeName = node.nodeName;  //标签
+                let nodeAttr = node.attributes;  //属性（数组形式）
+                let _attrObj = {};
+                for (let i = 0; i < nodeAttr.length; i++) {  //将数组形式属性转化为对象
+                    _attrObj[nodeAttr[i].nodeName] = nodeAttr[i].nodeValue;
+                }
+                _vnode = new VNode(nodeName, _attrObj, undefined, nodeType);
+
+                let childNodes = node.childNodes;
+                for (let i = 0; i < childNodes.length; i++) {
+                    _vnode.appendChild(getVNode(childNodes[i]))  //递归
+                }
+            } else if (nodeType === 3) {
+                //文本节点
+                _vnode = new VNode(undefined, undefined, node.nodeValue, nodeType);
+            }
+            return _vnode
+        }
+
+        let root = document.querySelector("#root")
+        let VRoot = getVNode(root);
+        console.log(VRoot)
 
     </script>
 </body>
+
 </html>
