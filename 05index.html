@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>将虚拟DOM转化为真实DOM</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>hello1</div>
+        <div>hello2</div>
+        <div>hello3</div>
+        <ul>
+            <li>1</li>
+            <li>2</li>
+            <li>3</li>
+        </ul>
+    </div>
+
+    <script>
+        class VNode {
+            constructor(tag, data, value, type) {
+                this.tag = tag && tag.toLowerCase();
+                this.data = data;
+                this.value = value;
+                this.type = type;
+                this.children = [];
+            }
+            appendChild(vnode) {
+                this.children.push(vnode);
+            }
+        }
+
+        //真实DOM转化为虚拟DOM
+        function getVNode(node) {
+            let nodeType = node.nodeType;  //节点类型
+            let _vnode = null;
+            if (nodeType === 1) {
+                //元素节点
+                let nodeName = node.nodeName;  //标签
+                let nodeAttr = node.attributes;  //属性（数组形式）
+                let _attrObj = {};
+                for (let i = 0; i < nodeAttr.length; i++) {
+                    _attrObj[nodeAttr[i].nodeName] = nodeAttr[i].nodeValue;
+                }
+                _vnode = new VNode(nodeName, _attrObj, undefined, nodeType);
+
+                let childNodes = node.childNodes;
+                for (let i = 0; i < childNodes.length; i++) {
+                    _vnode.appendChild(getVNode(childNodes[i]));   //递归遍历
+                }
+            } else if (nodeType === 3) {
+                //文本节点
+                _vnode = new VNode(undefined, undefined, node.nodeValue, nodeType);
+            }
+            return _vnode;
+        }
+        let root = document.querySelector("#root");
+        let VRoot = getVNode(root);
+        console.log(VRoot);
+
+        //虚拟DOM转化为真实DOM
+        function parseVNode(vnode) {
+            let type = vnode.type;
+            let _node = null;
+            if (type === 1) {
+                //元素节点
+                _node = document.createElement(vnode.tag);  //创建元素节点
+
+                //给元素节点添加属性
+                let data = vnode.data;
+                Object.keys(data).forEach((item) => {
+                    let attrName = item;
+                    let attrValue = data[item];
+                    _node.setAttribute(attrName, attrValue);
+                })
+
+                //子元素
+                let children = vnode.children;
+                children.forEach((subvnode) => {   //递归，遍历子元素
+                    _node.appendChild(parseVNode(subvnode));
+                })
+            } else if (type === 3) {
+                //文本节点
+                _node = document.createTextNode(vnode.value);   //创建文本节点
+            }
+            return _node;
+        }
+        let realDOM = parseVNode(VRoot);
+        console.log(realDOM)
+    </script>
+</body>
+
+</html>
