@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>将对象响应式化</title>
+</head>
+<body>
+    <script>
+        let data = {
+            name: '张三',
+            age: 19,
+            course: [
+                {name: '语文'},
+                {name: '数学'},
+                {name: '英语'},
+            ]
+        };
+        function defineReactive(target, key, value, enumerable) {
+            if(typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                reactify(value)
+            }
+            Object.defineProperty(target, key, {
+                configurable: true,
+                enumerable: !!enumerable,
+                get() {
+                    return value;
+                },
+                set(newVal) {
+                    value = newVal;
+                }
+            })
+        };
+
+        //将数据响应式化
+        function reactify(obj) {
+            let keys = Object.keys(obj);
+            for(let i = 0; i < keys.length; i++) {
+                let key = keys[i];  //拿到对象里面的属性名
+                let value = obj[key];
+                //判断这个属性是不是引用类型，判断是不是数组
+                //如果是引用类型，就需要递归，如果不是引用类型，就不需要递归
+                //如果是数组，则需要循环数组，拿到里面的元素，进行上面的判断，将里面的元素进行响应式化
+                if(Array.isArray(value)) {
+                    //数组
+                    for(let j = 0; j < value.length; j++) {
+                        reactify(value[j]);
+                    }
+                } else {
+                    //对象或者值类型
+                    defineReactive(obj, key, value, true)
+                }
+            }
+        }
+
+        reactify(data)
+
+    </script>
+</body>
+</html>
