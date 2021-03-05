@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代理访问对象成员</title>
+</head>
+<body>
+    <div id="root" title="test">
+        <div class="text-name">{{name}}</div>
+        <div>{{age}}</div>
+        <div>{{sex}}</div>
+        <ul>
+            <li>第1个li标签</li>
+            <li>第2个li标签</li>
+            <li>第3个li标签</li>
+        </ul>
+    </div>
+
+    <script>
+        //调用  Object.defineProperty  使数据响应式化
+        function defineReactive(target, key, value, enumerable) {
+            //使用这种的处理方法后，这里this就是Vue实例
+            let that = this;
+            if(typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                reactify(value);
+            }
+            Object.defineProperty(target, key, {
+                configurable: true,
+                enumerable: !!enumerable,
+                get() {
+                    return value
+                },
+                set(newVal) {
+                    if(typeof value === 'object' && value !== null) {
+                        value = reactify(newVal)
+                    } else {
+                        value = newVal;
+                    }
+                    that.mountComponent();
+                }
+            })
+        }
+
+        //将数据响应式化
+        function reactify(obj, vm) {
+            let keys = Object.keys(obj);
+            for(let i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                let value = obj[key];
+
+                if(Array.isArray(value)) {
+                    //数组
+                    value.__proto__ = array_methods;
+                    for(let j = 0; j < value.length; j++) {
+                        reactify(value[j], vm)
+                    }
+                } else {
+                    //对象或者值类型
+                    defineReactive.call(vm, obj, key, value, true)
+                }
+            }
+        }
+
+        //将某一个对象的属性访问   映射到  对象的某一个属性成员上
+        function proxy(target, prop, key) {
+            Object.defineProperty(target, key, {
+                configurable: true,
+                enumerable: true,
+                get() {
+                    return target[prop][key];
+                },
+                set(newVal) {
+                    target[prop][key] = newVal;
+                }
+            })
+        }
+
+        //拦截数组的方法，使数组方法响应式化
+        let ARRAY_METHODS = [
+            'push',
+            'pop',
+            'shift',
+            'unshift',
+            'reverse',
+            'splice'
+        ]
+        let array_methods = Object.create(Array.prototype);
+        ARRAY_METHODS.forEach(method => {
+            array_methods[method] = function() {
+                console.log(`调用的是拦截的${method}方法`)
+                for(let i = 0; i < arguments.length; i++) {
+                    reactify(arguments[i])
+                }
+                let res = Array.prototype[method].apply(this, arguments)
+                return res;
+            }
+        })
+
+
+        //生成  虚拟DOM   VNode  的构造函数
+        class VNode{
+            constructor(tag, data, value, type) {
+                this.tag = tag && tag.toLowerCase();
+                this.data = data;
+                this.value = value;
+                this.type = type;
+                this.children = []
+            }
+            appendChild(vnode) {
+                this.children.push(vnode)
+            }
+        }
+
+        //将真实 HTML DOM  转化为  虚拟DOM
+        function getVNode(node) {
+            let nodeType = node.nodeType;
+            let _vnode = null;
+            if(nodeType === 1) {
+                //元素节点
+                let nodeName = node.nodeName;
+                let nodeAttr = node.attributes;
+                let _attrObj = {};
+                for(let i = 0; i < nodeAttr.length; i++) {
+                    _attrObj[nodeAttr[i].nodeName] = nodeAttr[i].nodeValue;
+                }
+                _vnode = new VNode(nodeName, _attrObj, undefined, nodeType);
+
+                let childNodes = node.childNodes;
+                for(let i = 0; i < childNodes.length; i++) {
+                    _vnode.appendChild(getVNode(childNodes[i]))
+                }
+            } else if(nodeType === 3) {
+                //文本节点
+                _vnode = new VNode(undefined, undefined, node.nodeValue, nodeType);
+            }
+            return _vnode;
+        }
+
+        //通过路径访问对象成员
+        function getValueByPath(obj, path) {
+            let paths = path.split(".");
+            let res = obj;
+            let key;
+            while(key = paths.shift()) {
+                res = res[key]
+            }
+            return res;
+        }
+
+        //将模板与数据结合， 生成带有数据的虚拟DOM  VNode，Vue中是将抽象语法树  与  data结合
+        function combine(vnode, data) {
+            let _tag = vnode.tag;
+            let _data = vnode.data;
+            let _value = vnode.value;
+            let _type = vnode.type;
+            let _children = vnode.children;
+            let _vnode = null;
+            let splint = /\{\{(.+?)\}\}/g
+
+            if(_type === 1) {
+                //元素节点
+                _vnode = new VNode(_tag, _data, _value, _type);
+
+                _children.forEach(subvnode => {
+                    _vnode.appendChild(combine(subvnode, data))
+                });
+            } else if(_type === 3) {
+                //文本节点
+                _value = _value.replace(splint, function(_, v) {
+                    return getValueByPath(data, v.trim());
+                })
+                _vnode = new VNode(_tag, _data, _value, _type);
+            }
+            return _vnode;
+        }
+
+        //将  虚拟DOM  转化为  真正的 HTML  DOM
+        function parseVNode(vnode) {
+            let type = vnode.type;
+            let _node = null;
+            if(type === 1) {
+                //元素节点
+                _node = document.createElement(vnode.tag);  //创建一个元素节点
+
+                let _attrObj = vnode.data;
+                Object.keys(_attrObj).forEach(key => {
+                    let attrName = key;
+                    let attrValue = _attrObj[key];
+                    _node.setAttribute(attrName, attrValue)
+                })
+
+                let _children = vnode.children;
+                _children.forEach(subvnode => {
+                    _node.appendChild(parseVNode(subvnode))
+                })
+
+            } else if(type === 3) {
+                //文本节点
+                _node = document.createTextNode(vnode.value);  //创建一个文本节点
+            }
+            return _node;
+        }
+
+
+        function Vue(options) {
+            this._data = options.data;
+            this._el = options.el;
+            this._elm = document.querySelector(this._el);
+            this._template = this._elm;
+            this._parent = this._elm.parentNode;
+
+            //将数据响应式化
+            // reactify(this._data, this/*将Vue实例传入，折中的方法， 后面会修改*/)
+            this.initData();
+
+            //挂载
+            this.mount();
+        }
+
+        Vue.prototype.mount = function() {
+            //这里需要提供一个render函数
+            this.render = this.createRenderFn();
+
+            this.mountComponent();
+        }
+
+        Vue.prototype.createRenderFn = function() {
+            let ast = getVNode(this._template);   //这里用VNode  来代替  抽象语法树
+            return function render() {
+                let _tmp = combine(ast, this._data)    //将ast  与   data   结合，生成新的带有数据的VNode
+                return _tmp;
+            }
+        }
+
+        Vue.prototype.mountComponent = function() {
+            //执行mountComponent()  函数
+           let mount = () => {
+               this.updata(this.render())
+           } 
+
+           mount.call(this);  //这里应该交给watcher  来调用，，  后期会修改
+        }
+
+        Vue.prototype.updata = function(vnode) {
+            let realDOM  = parseVNode(vnode)  //将  虚拟DOM  转化为  真正的HTML  DOM
+            
+            //这里是将整个  DOM 全部替换掉 ， 而Vue中是通过  diff  算法计算过的
+            this._parent.replaceChild(realDOM, document.querySelector(this._el))
+        }
+
+        Vue.prototype.initData = function() {
+            let keys = Object.keys(this._data);
+            
+            //将数据响应式化
+            for(let i = 0; i < keys.length; i++) {
+                reactify(this._data, this)
+            }
+
+            //代理
+            for(let i = 0; i < keys.length; i++) {
+                proxy(this, '_data', keys[i])
+            }
+        }
+
+        
+
+        let app = new Vue({
+            el: '#root',
+            data: {
+                name: '张三',
+                age: 20,
+                sex: '男',
+                course: [
+                    { name: '语文' },
+                    { name: '数学' },
+                    { name: '英语' },
+                ]
+            }
+        })
+    </script>
+</body>
+</html>
